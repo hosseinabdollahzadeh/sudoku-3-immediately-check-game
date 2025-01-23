@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" style="font-family: Tahoma, sans-serif;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بازی سودوکو - محمد عبداله زاده</title>
+    <style>
+        #sudoku-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            grid-gap: 2px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            font-size: 18px;
+            background-color: white; /* پیش‌فرض سفید */
+            border: 1px solid #ccc;
+        }
+
+        .cell.filled {
+            background-color: #e9ecef; /* خانه‌های از پیش پر شده خاکستری */
+        }
+
+        #controls {
+            text-align: center;
+            margin: 20px;
+        }
+
+        #message {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<h1 style="text-align: center;font-family: Tahoma, sans-serif; font-size: 1.5rem;">بازی سودوکو (با بررسی لحظه ای)</h1>
+<div id="sudoku-grid"></div>
+
+<div id="controls">
+    <button id="generate-sudoku">تولید سودوکو جدید</button>
+    <p id="message"></p>
+    <br>
+    <p>
+        ساخته شده توسط دانش آموز (پایه هفتم): <span style="font-weight: bold; color: #FF5733;">محمد عبداله زاده</span>
+        <br>
+        معلم: <span style="font-weight: bold; color: #33CFFF;">رضا اسماعیلی</span>
+        <br>
+        مدرسه: <span style="font-weight: bold; color: #FF33A6;">ولی عصر آبیز</span>
+        <br>
+        جشنواره خوارزمی
+    </p>
+</div>
+
+<script>
+    // مجموعه‌ای از 20 پازل سودوکو
+    const sudokuPuzzles = [
+        [
+            [5, 3, 0, 0, 7, 0, 0, 0, 0],
+            [6, 0, 0, 1, 9, 5, 0, 0, 0],
+            [0, 9, 8, 0, 0, 0, 0, 6, 0],
+            [8, 0, 0, 0, 6, 0, 0, 0, 3],
+            [4, 0, 0, 8, 0, 3, 0, 0, 1],
+            [7, 0, 0, 0, 2, 0, 0, 0, 6],
+            [0, 6, 0, 0, 0, 0, 2, 8, 0],
+            [0, 0, 0, 4, 1, 9, 0, 0, 5],
+            [0, 0, 0, 0, 8, 0, 0, 7, 9]
+        ],
+        [
+            [0, 0, 0, 6, 0, 0, 4, 0, 0],
+            [7, 0, 0, 0, 0, 3, 6, 0, 0],
+            [0, 0, 0, 0, 9, 1, 0, 8, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 5, 0, 1, 8, 0, 0, 0, 3],
+            [0, 0, 0, 3, 0, 6, 0, 4, 5],
+            [0, 4, 0, 2, 0, 0, 0, 6, 0],
+            [9, 0, 3, 0, 0, 0, 0, 0, 0],
+            [0, 2, 0, 0, 0, 0, 1, 0, 0]
+        ],
+        [
+            [9, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 7, 0, 0, 0, 3, 0, 0],
+            [0, 0, 0, 6, 0, 0, 0, 5, 0],
+            [0, 7, 0, 0, 0, 9, 0, 0, 6],
+            [0, 5, 9, 0, 0, 0, 1, 0, 0],
+            [0, 0, 3, 5, 0, 0, 0, 0, 8],
+            [5, 0, 0, 0, 0, 0, 0, 0, 3],
+            [0, 8, 0, 7, 0, 5, 0, 9, 0],
+            [0, 0, 0, 0, 9, 0, 0, 0, 7]
+        ],
+        [
+            [0, 0, 0, 0, 5, 0, 0, 9, 0],
+            [8, 0, 0, 6, 0, 0, 0, 0, 0],
+            [0, 4, 0, 0, 0, 0, 0, 3, 0],
+            [0, 0, 7, 0, 0, 0, 6, 0, 5],
+            [0, 6, 0, 0, 0, 9, 3, 0, 0],
+            [3, 0, 0, 0, 0, 7, 0, 0, 8],
+            [0, 3, 0, 0, 0, 8, 0, 6, 0],
+            [0, 0, 0, 0, 0, 6, 4, 0, 7],
+            [0, 5, 0, 8, 7, 0, 0, 0, 9]
+        ],
+        [
+            [0, 9, 0, 0, 5, 7, 8, 0, 0],
+            [7, 0, 0, 3, 0, 0, 0, 5, 0],
+            [5, 0, 0, 0, 4, 0, 0, 0, 3],
+            [3, 0, 0, 4, 0, 0, 0, 0, 9],
+            [0, 0, 3, 0, 9, 0, 5, 0, 0],
+            [6, 0, 0, 0, 0, 5, 0, 0, 7],
+            [0, 0, 5, 0, 8, 0, 0, 0, 2],
+            [0, 8, 0, 0, 1, 4, 0, 0, 6],
+            [0, 0, 9, 7, 6, 0, 0, 3, 0]
+        ],
+        [
+            [0, 0, 6, 0, 0, 3, 0, 4, 0],
+            [0, 0, 8, 0, 5, 9, 7, 0, 0],
+            [0, 9, 0, 0, 8, 0, 0, 6, 5],
+            [7, 0, 5, 3, 0, 6, 0, 0, 0],
+            [0, 0, 4, 9, 0, 0, 8, 0, 0],
+            [0, 0, 0, 0, 7, 8, 6, 0, 0],
+            [9, 0, 0, 8, 6, 4, 5, 7, 0],
+            [0, 8, 7, 0, 0, 5, 0, 9, 4],
+            [4, 0, 0, 7, 0, 0, 9, 0, 0]
+        ],
+        [
+            [2, 0, 0, 0, 9, 0, 0, 0, 5],
+            [3, 0, 0, 0, 0, 4, 8, 0, 0],
+            [5, 0, 9, 0, 6, 0, 0, 0, 7],
+            [6, 5, 0, 0, 7, 0, 0, 9, 0],
+            [0, 9, 8, 6, 0, 0, 7, 5, 0],
+            [7, 0, 0, 8, 2, 0, 9, 0, 4],
+            [0, 4, 0, 0, 3, 0, 5, 0, 9],
+            [0, 0, 7, 5, 0, 9, 0, 6, 8],
+            [8, 0, 0, 7, 0, 0, 0, 0, 2]
+        ],
+        [
+            [0, 8, 0, 0, 0, 0, 0, 4, 0],
+            [0, 0, 4, 0, 2, 0, 3, 0, 5],
+            [0, 0, 0, 9, 8, 4, 7, 6, 0],
+            [9, 3, 7, 8, 0, 6, 4, 5, 2],
+            [0, 5, 0, 0, 3, 0, 6, 8, 0],
+            [0, 6, 2, 0, 5, 9, 0, 0, 4],
+            [8, 7, 9, 6, 4, 0, 0, 2, 0],
+            [5, 2, 6, 3, 9, 7, 8, 0, 0],
+            [3, 0, 0, 2, 0, 0, 5, 0, 9]
+        ],
+        [
+            [0, 0, 0, 5, 0, 0, 0, 9, 0],
+            [0, 8, 0, 0, 4, 0, 3, 0, 0],
+            [0, 0, 0, 0, 6, 3, 0, 8, 0],
+            [7, 0, 0, 0, 0, 0, 4, 0, 5],
+            [0, 9, 0, 0, 0, 5, 0, 4, 0],
+            [0, 0, 0, 2, 0, 0, 0, 0, 6],
+            [8, 0, 9, 0, 0, 0, 7, 0, 0],
+            [0, 0, 0, 0, 7, 0, 0, 6, 0],
+            [0, 3, 0, 9, 0, 0, 0, 0, 8]
+        ],
+        [
+            [1, 0, 0, 0, 0, 9, 0, 0, 0],
+            [0, 6, 8, 0, 4, 0, 0, 9, 0],
+            [0, 0, 9, 0, 0, 0, 7, 0, 0],
+            [5, 0, 7, 6, 0, 0, 9, 0, 3],
+            [0, 8, 0, 9, 0, 0, 6, 5, 0],
+            [9, 0, 3, 0, 5, 7, 0, 0, 4],
+            [0, 9, 0, 0, 6, 0, 8, 0, 0],
+            [3, 0, 0, 0, 0, 0, 0, 0, 9],
+            [0, 0, 0, 0, 0, 9, 4, 0, 1]
+        ]
+    ];
+
+
+    let currentPuzzle = null;
+
+    function setupSudokuGrid(puzzle) {
+        const gridContainer = document.getElementById('sudoku-grid');
+        gridContainer.innerHTML = ''; // پاک کردن جدول قبلی
+        currentPuzzle = puzzle;
+
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const cell = document.createElement('input');
+                cell.type = 'text';
+                cell.maxLength = 1;
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+                cell.classList.add('cell');
+
+                if (puzzle[row][col] !== 0) {
+                    cell.value = puzzle[row][col];
+                    cell.disabled = true; // غیرقابل ویرایش کردن خانه‌های پیش‌فرض
+                    cell.classList.add('filled');
+                } else {
+                    cell.addEventListener('input', () => validateCell(cell));
+                }
+
+                gridContainer.appendChild(cell);
+            }
+        }
+    }
+
+    function validateCell(cell) {
+        const row = parseInt(cell.dataset.row, 10);
+        const col = parseInt(cell.dataset.col, 10);
+        const value = parseInt(cell.value, 10);
+
+        // اگر مقدار وارد شده عدد نبود، خالی نگه‌دار
+        if (isNaN(value) || value < 1 || value > 9) {
+            cell.value = ''; // پاک کردن مقدار غیرمجاز
+            cell.style.backgroundColor = ''; // بازگرداندن رنگ سفید
+            return;
+        }
+
+        const userGrid = getUserGrid();
+
+        // بررسی یونیک بودن عدد
+        if (isSafe(userGrid, row, col, value)) {
+            cell.style.backgroundColor = '#d4edda'; // سبز برای درست
+        } else {
+            cell.style.backgroundColor = '#f8d7da'; // قرمز برای غلط
+        }
+
+        // بررسی تکمیل بودن جدول
+        checkCompletion();
+    }
+
+    function getUserGrid() {
+        const userGrid = createEmptyGrid();
+        const cells = document.querySelectorAll('.cell');
+
+        cells.forEach(cell => {
+            const row = parseInt(cell.dataset.row, 10);
+            const col = parseInt(cell.dataset.col, 10);
+            const value = parseInt(cell.value, 10);
+
+            userGrid[row][col] = isNaN(value) ? 0 : value;
+        });
+
+        return userGrid;
+    }
+
+    function isSafe(grid, row, col, num) {
+        // بررسی در ردیف
+        for (let i = 0; i < 9; i++) {
+            if (i !== col && grid[row][i] === num) {
+                return false;
+            }
+        }
+
+        // بررسی در ستون
+        for (let i = 0; i < 9; i++) {
+            if (i !== row && grid[i][col] === num) {
+                return false;
+            }
+        }
+
+        // بررسی در خانه ۹تایی
+        const startRow = Math.floor(row / 3) * 3;
+        const startCol = Math.floor(col / 3) * 3;
+
+        for (let i = startRow; i < startRow + 3; i++) {
+            for (let j = startCol; j < startCol + 3; j++) {
+                if ((i !== row || j !== col) && grid[i][j] === num) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function checkCompletion() {
+        const userGrid = getUserGrid();
+        const message = document.getElementById('message');
+
+        // بررسی اینکه همه خانه‌ها پر شده‌اند
+        const allFilled = userGrid.every(row => row.every(value => value !== 0));
+
+        if (allFilled) {
+            // بررسی درستی تمام خانه‌ها
+            const allValid = userGrid.every((row, rowIndex) =>
+                row.every((value, colIndex) => isSafe(userGrid, rowIndex, colIndex, value))
+            );
+
+            if (allValid) {
+                message.textContent = 'تبریک! همه اعداد صحیح وارد شده‌اند!';
+                message.className = 'success';
+            } else {
+                message.textContent = 'جدول پر شده است، اما اعدادی اشتباه وجود دارد.';
+                message.className = 'error';
+            }
+        } else {
+            message.textContent = ''; // خالی کردن پیام
+        }
+    }
+
+    function createEmptyGrid() {
+        return Array.from({length: 9}, () => Array(9).fill(0));
+    }
+
+    function generateNewSudoku() {
+        const randomIndex = Math.floor(Math.random() * sudokuPuzzles.length);
+        setupSudokuGrid(sudokuPuzzles[randomIndex]);
+        document.getElementById('message').textContent = ''; // پاک کردن پیام
+    }
+
+    // تنظیم رویداد برای دکمه تولید سودوکو جدید
+    document.getElementById('generate-sudoku').addEventListener('click', generateNewSudoku);
+
+    // ساخت جدول در زمان لود شدن صفحه
+    window.onload = () => generateNewSudoku();
+</script>
+</body>
+</html>
